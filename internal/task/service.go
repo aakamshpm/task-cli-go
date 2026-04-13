@@ -13,6 +13,7 @@ var ErrEmptyTitle = errors.New("title cannot be empty")
 // this is handy in test cases where we would create a fixed time and pass it to instance of service during task creation or any other operation
 // we are using a type function becaues the field 'now' in 'Service' struct uses a function call to get current time.
 // so in real usage, we pass real current time. but in test, we create a fixed time and use this function to pass it.
+// in short, this is just a line of code to eliminate writing 'func() time.Time' everytime in function params
 type Clock func() time.Time
 
 type Service struct {
@@ -60,4 +61,13 @@ func (s *Service) Add(title string) (Task, error) {
 	s.nextInt++
 
 	return t, nil
+}
+
+func (s *Service) List() []Task {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	out := make([]Task, len(s.tasks))
+	copy(out, s.tasks)
+	return out
 }
