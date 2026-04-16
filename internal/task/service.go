@@ -37,7 +37,7 @@ func NewService(store Store, now Clock) *Service {
 	}
 }
 
-func nextId(tasks []Task) int {
+func nextID(tasks []Task) int {
 	maxID := 0
 	// range in Go returns two things: index and the value at that index
 	// since we dont care about index this time, we use '_' to cover it. '_' means we dont use it, hence throw it away
@@ -78,7 +78,7 @@ func (s *Service) Add(title string) (Task, error) {
 	}
 
 	t := Task{
-		ID:        nextId(tasks),
+		ID:        nextID(tasks),
 		Title:     title,
 		Done:      false,
 		CreatedAt: s.now().UTC(),
@@ -110,33 +110,33 @@ func (s *Service) MarkDone(id int) (Task, error) {
 	tasks[index].Done = true
 
 	if err := s.store.Save(tasks); err != nil {
-		return Task{}, fmt.Errorf("scan tasks: %w", err)
+		return Task{}, fmt.Errorf("save tasks: %w", err)
 	}
 
 	return tasks[index], nil
 }
 
-func (s *Service) Delete(id int) (Task, error) {
+func (s *Service) Delete(id int) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	tasks, err := s.store.Load()
 	if err != nil {
-		return Task{}, fmt.Errorf("load tasks: %w", err)
+		return fmt.Errorf("load tasks: %w", err)
 	}
 
 	index := indexByID(tasks, id)
 	if index == -1 {
-		return Task{}, fmt.Errorf("%w: %d", ErrTaskNotFound, id)
+		return fmt.Errorf("%w: %d", ErrTaskNotFound, id)
 	}
 
 	tasks = append(tasks[:index], tasks[index+1:]...)
 
 	if err := s.store.Save(tasks); err != nil {
-		return Task{}, fmt.Errorf("scan tasks: %w", err)
+		return fmt.Errorf("scan tasks: %w", err)
 	}
 
-	return tasks[index], nil
+	return nil
 }
 
 func (s *Service) List() ([]Task, error) {

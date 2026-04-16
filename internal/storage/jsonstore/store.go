@@ -66,12 +66,14 @@ func (s *Store) Save(tasks []task.Task) error {
 	// even if we loose power in between writes, the original json stays untouched
 	tmpPath := s.filePath + ".tmp"
 	file, err := os.Create(tmpPath)
-	// defer make sures the file is closed after every operation even if error occurs
-	defer func() { _ = file.Close() }()
 
 	if err != nil {
 		return fmt.Errorf("create temp file: %w", err)
 	}
+
+	// defer make sures the file is closed after every operation even if error occurs
+	// also defer should always come after err checking; in this case, we only need to attempt closing file only if the file was created successfully
+	defer func() { _ = file.Close() }()
 
 	// if anything goes wrong, we remove the tmp file at last
 	defer func() { _ = os.Remove(tmpPath) }()
