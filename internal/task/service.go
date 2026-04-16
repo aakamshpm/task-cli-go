@@ -133,7 +133,7 @@ func (s *Service) Delete(id int) error {
 	tasks = append(tasks[:index], tasks[index+1:]...)
 
 	if err := s.store.Save(tasks); err != nil {
-		return fmt.Errorf("scan tasks: %w", err)
+		return fmt.Errorf("save tasks: %w", err)
 	}
 
 	return nil

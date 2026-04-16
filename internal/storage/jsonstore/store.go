@@ -73,10 +73,13 @@ func (s *Store) Save(tasks []task.Task) error {
 
 	// defer make sures the file is closed after every operation even if error occurs
 	// also defer should always come after err checking; in this case, we only need to attempt closing file only if the file was created successfully
-	defer func() { _ = file.Close() }()
-
-	// if anything goes wrong, we remove the tmp file at last
-	defer func() { _ = os.Remove(tmpPath) }()
+	defer func() {
+		if file != nil {
+			_ = file.Close()
+		}
+		// if anything goes wrong, we remove the tmp file at last
+		_ = os.Remove(tmpPath)
+	}()
 
 	// creates a json encoder to perform write operations
 	encoder := json.NewEncoder(file)
@@ -98,6 +101,7 @@ func (s *Store) Save(tasks []task.Task) error {
 	if err := file.Close(); err != nil {
 		return fmt.Errorf("close temp file: %w", err)
 	}
+	file = nil // preventing double-close due to defer closing the file anyways
 
 	if err := os.Rename(tmpPath, s.filePath); err != nil {
 		return fmt.Errorf("rename temp file: %w", err)
