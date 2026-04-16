@@ -2,6 +2,7 @@ package task
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -71,24 +72,83 @@ func (s *Service) Add(title string) (Task, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	tasks, err := s.store.Load()
+	if err != nil {
+		return Task{}, fmt.Errorf("load tasks: %w", err)
+	}
+
 	t := Task{
-		ID:        s.nextInt,
+		ID:        nextId(tasks),
 		Title:     title,
 		Done:      false,
 		CreatedAt: s.now().UTC(),
 	}
 
-	s.tasks = append(s.tasks, t)
-	s.nextInt++
+	tasks = append(tasks, t)
+
+	if err := s.store.Save(tasks); err != nil {
+		return Task{}, fmt.Errorf("save tasks: %w", err)
+	}
 
 	return t, nil
 }
 
-func (s *Service) List() []Task {
+func (s *Service) MarkDone(id int) (Task, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	out := make([]Task, len(s.tasks))
-	copy(out, s.tasks)
-	return out
+	tasks, err := s.store.Load()
+	if err != nil {
+		return Task{}, fmt.Errorf("load tasks: %w", err)
+	}
+
+	index := indexByID(tasks, id)
+	if index == -1 {
+		return Task{}, fmt.Errorf("%w: %d", ErrTaskNotFound, id)
+	}
+
+	tasks[index].Done = true
+
+	if err := s.store.Save(tasks); err != nil {
+		return Task{}, fmt.Errorf("scan tasks: %w", err)
+	}
+
+	return tasks[index], nil
+}
+
+func (s *Service) Delete(id int) (Task, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	tasks, err := s.store.Load()
+	if err != nil {
+		return Task{}, fmt.Errorf("load tasks: %w", err)
+	}
+
+	index := indexByID(tasks, id)
+	if index == -1 {
+		return Task{}, fmt.Errorf("%w: %d", ErrTaskNotFound, id)
+	}
+
+	tasks = append(tasks[:index], tasks[index+1:]...)
+
+	if err := s.store.Save(tasks); err != nil {
+		return Task{}, fmt.Errorf("scan tasks: %w", err)
+	}
+
+	return tasks[index], nil
+}
+
+func (s *Service) List() ([]Task, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	tasks, err := s.store.Load()
+	if err != nil {
+		return nil, fmt.Errorf("load tasks: %w", err)
+	}
+
+	out := make([]Task, len(tasks))
+	copy(out, tasks)
+	return out, nil
 }
